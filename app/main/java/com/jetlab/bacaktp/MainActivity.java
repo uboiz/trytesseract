@@ -8,6 +8,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -101,10 +102,15 @@ public class MainActivity extends AppCompatActivity
                     }
                     photoUri = null;
                     if (file != null) {
-                        photoUri = FileProvider.getUriForFile(
-                                getApplicationContext(),
-                                BuildConfig.APPLICATION_ID + "." + getLocalClassName() + ".provider",
-                                file);
+                        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.KITKAT){
+                            photoUri = Uri.fromFile(file);
+                        } else {
+                            photoUri = FileProvider.getUriForFile(
+                                    getApplicationContext(),
+                                    BuildConfig.APPLICATION_ID + "." + getLocalClassName() + ".provider",
+                                    file);
+                        }
+
                         intent.putExtra(MediaStore.EXTRA_OUTPUT,photoUri);
                     }
                     if (intent.resolveActivity(getPackageManager()) != null) {
