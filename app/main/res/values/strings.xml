@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Simple OCR</string>
+    <string-array name="lang_option">
+        <item>eng</item>
+        <item>ind</item>
+    </string-array>
+</resources>

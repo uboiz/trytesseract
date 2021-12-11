@@ -2,6 +2,7 @@ package com.jetlab.bacaktp;
 
 import android.Manifest;
 import android.content.ContentResolver;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
@@ -12,9 +13,14 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -22,6 +28,7 @@ import androidx.activity.result.ActivityResult;
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -38,11 +45,12 @@ import java.io.OutputStream;
 public class MainActivity extends AppCompatActivity
 {
     private ActivityResultLauncher activityResultLauncher;
+    private ActivityResultLauncher<String> activityOpenImage;
     private ImageView imageView;
     private TessBaseAPI tessBaseAPI;
     public static final String TESS_DATA = "/tessdata";
     private static Uri photoUri;
-    private int MAXWIDTHBMP=1024,BTSBLACKWHITE=100;
+    private static int SCALEIMAGE=50,BTSBLACKWHITE=100,BAHASA=0;
     private Bitmap tmpbmp=null;
 
     @Override
@@ -57,32 +65,34 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void onActivityResult(ActivityResult result) {
                 if (result.getResultCode() == RESULT_OK) {
-                    lihatlah("Please wait");
-                    if (photoUri != null){
-                        tmpbmp=grabImage(photoUri);
-                        if(tmpbmp!=null){
-                            if(tmpbmp.getWidth()>MAXWIDTHBMP){
-                                int w=MAXWIDTHBMP;
-                                int h=(int)Math.round(1.0*w*tmpbmp.getHeight()/tmpbmp.getWidth());
-                                tmpbmp=Bitmap.createScaledBitmap(tmpbmp,w,h, true);
-                            }
-                            tmpbmp=toBlackWhite(tmpbmp);
-                            imageView.setImageBitmap(tmpbmp);
-                            new Thread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    String str=getText(tmpbmp);
-                                    runOnUiThread(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            lihatlah(str);
-                                        }
-                                    });
-                                }
-                            }).start();
-                        }else lihatlah("Bitmap is empty!");
-                    }else makeToast("Uri is Null");
+                    preCooking();
                 }
+            }
+        });
+
+        activityOpenImage = registerForActivityResult(new ActivityResultContracts.GetContent(), new ActivityResultCallback<Uri>() {
+            @Override
+            public void onActivityResult(Uri uri) {
+                if (uri!=null) {
+                    photoUri=uri;
+                    preCooking();
+                }
+            }
+        });
+
+        Spinner spinner = (Spinner) findViewById(R.id.spinner);
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
+                R.array.lang_option, android.R.layout.simple_spinner_item);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+        spinner.setSelection(BAHASA);
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){
+            public void onItemSelected(AdapterView<?> parent, View view,int pos, long id) {
+                BAHASA=pos;
+            }
+
+            public void onNothingSelected(AdapterView<?> parent) {
+                // Another interface callback
             }
         });
 
@@ -100,7 +110,6 @@ public class MainActivity extends AppCompatActivity
                     } catch (IOException e) {
                         makeToast("Failed make file :"+e.toString());
                     }
-                    photoUri = null;
                     if (file != null) {
                         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.KITKAT){
                             photoUri = Uri.fromFile(file);
@@ -127,13 +136,158 @@ public class MainActivity extends AppCompatActivity
             }
         });
 
+        ((Button)findViewById(R.id.button2)).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                activityOpenImage.launch("image/*");
+            }
+        });
+
+        ((Button)findViewById(R.id.button3)).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                inputNilai(0);
+            }
+        });
+
+        ((Button)findViewById(R.id.button4)).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                inputNilai(1);
+            }
+        });
+
+        ((Button)findViewById(R.id.button5)).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                letCooking();
+            }
+        });
+
+        ((Button)findViewById(R.id.button6)).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://edugameapp.blogspot.com"));
+                startActivity(browserIntent);
+            }
+        });
+
         checkPermission();
         prepareTessData();
+        updateButton();
+    }
+
+    private void updateButton()
+    {
+        ((Button)findViewById(R.id.button3)).setText("Scale:"+SCALEIMAGE+"%");
+        ((Button)findViewById(R.id.button4)).setText("BW:"+BTSBLACKWHITE);
     }
 
     private void lihatlah(String str)
     {
         ((TextView) findViewById(R.id.textview2)).setText(str);
+    }
+
+    private void letCooking()
+    {
+        if(tmpbmp!=null){
+            lihatlah("Scanning..");
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    String str = getText(tmpbmp);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            lihatlah(str);
+                        }
+                    });
+                }
+            }).start();
+        }else lihatlah("Bitmap is empty!");
+    }
+
+    private void preCooking()
+    {
+        if (photoUri != null){
+            lihatlah("Please wait");
+            tmpbmp=grabImage(photoUri);
+            imageView.setImageBitmap(tmpbmp);
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    int MAXWIDTHBMP=(int)Math.round(SCALEIMAGE*tmpbmp.getWidth());
+                    if(tmpbmp.getWidth()>MAXWIDTHBMP){
+                        int w=MAXWIDTHBMP;
+                        int h=(int)Math.round(1.0*w*tmpbmp.getHeight()/tmpbmp.getWidth());
+                        tmpbmp=Bitmap.createScaledBitmap(tmpbmp,w,h, true);
+                    }
+                    tmpbmp=toBlackWhite(tmpbmp);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            imageView.setImageBitmap(tmpbmp);
+                            lihatlah("Ready to scan");
+                        }
+                    });
+                }
+            }).start();
+        }else makeToast("Uri is Null");
+    }
+
+    private void inputNilai(final int mode)
+    {
+        AlertDialog alertDialog = new AlertDialog.Builder(this).create();
+        if(mode==0)alertDialog.setTitle("Scale");
+        else alertDialog.setTitle("Black and White Limit");
+        alertDialog.setIcon(R.mipmap.ic_launcher);
+        View view = LayoutInflater.from(MainActivity.this).inflate(R.layout.inputnilai,null);
+        alertDialog.setView(view);
+        final EditText dividen = (EditText)view.findViewById(R.id.edittext1);
+        if(mode==0){
+            dividen.setText(""+SCALEIMAGE);
+            ((TextView)view.findViewById(R.id.textview1)).setText("input 0-100");
+        }else{
+            dividen.setText(""+BTSBLACKWHITE);
+            ((TextView)view.findViewById(R.id.textview1)).setText("input 0-255");
+        }
+        alertDialog.setCancelable(false);
+        alertDialog.setButton(AlertDialog.BUTTON_POSITIVE, "SUBMIT",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        if(dividen!=null && !dividen.getText().toString().isEmpty()){
+                            if(mode==0){
+                                int a=0;
+                                try{
+                                    a=Integer.parseInt(dividen.getText().toString());
+                                    if(a<0)a=0;
+                                    if(a>100)a=100;
+                                    SCALEIMAGE=a;
+                                    updateButton();
+                                    preCooking();
+                                }catch (NumberFormatException ex){}
+                            }else{
+                                int a=0;
+                                try{
+                                    a=Integer.parseInt(dividen.getText().toString());
+                                    if(a<0)a=0;
+                                    if(a>255)a=255;
+                                    BTSBLACKWHITE=a;
+                                    updateButton();
+                                    preCooking();
+                                }catch (NumberFormatException ex){}
+                            }
+                        }
+                        dialog.dismiss();
+                    }
+                });
+        alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE,"CANCEL",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                });
+        if(!isFinishing())alertDialog.show();
     }
 
     private void makeToast(String txt)
@@ -234,7 +388,8 @@ public class MainActivity extends AppCompatActivity
             makeToast(e.getMessage());
         }
         String dataPath = getExternalFilesDir("/").getPath() + "/";
-        tessBaseAPI.init(dataPath, "ind");
+        if(BAHASA==1)tessBaseAPI.init(dataPath, "ind");
+        else tessBaseAPI.init(dataPath, "eng");
         tessBaseAPI.setImage(bitmap);
         String retStr = "No result";
         try{
