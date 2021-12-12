@@ -3,7 +3,7 @@ The example of how to use tess-two library from rmtheis
 
 # Video Preview
 
-https://www.youtube.com/embed/SViqAuO4cb8
+https://www.youtube.com/watch?v=SViqAuO4cb8
 
 # Example App Bundle
 App bundle debug can be downloaded at:
